@@ -19,6 +19,23 @@ namespace AssignResourceChangeStatus
     {
         public Issue BeforeCreate(IssueEventArgs args)
         {
+            if (args.Entity.GetResources().Count == 0) return args.Entity;
+
+            var project = args.Context.Projects.Get(args.Entity.ProjectId);
+
+            if (project == null) return args.Entity;
+
+            List<IssueStatus> statuses = args.Context.Meta.StatusGet().FindAll(s => s.TemplateId == project.TemplateId).Where(s => !s.IsFinal).OrderBy(s => s.Sequence).ToList();
+
+            if (statuses.Count <= 1) return args.Entity;
+
+            if (args.Entity.StatusId == statuses[0].Id)
+            {
+                args.Entity.StatusId = statuses[1].Id;
+
+                return args.Entity;
+            }
+
             return args.Entity;
         }
 
