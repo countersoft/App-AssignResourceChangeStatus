@@ -4,8 +4,8 @@
     <description>Automatically set status to assigned (2nd item in status list) when you assign a resource</description>
     <version-major>7</version-major>
     <version-minor>1</version-minor>
-    <version-patch>0</version-patch>
+    <version-patch>2</version-patch>
     <publisher>Countersoft</publisher>
-    <released>2020-08-29T09:00:00Z</released>
+    <released>2021-02-01T09:00:00Z</released>
     <debug>false</debug>
 </app>
