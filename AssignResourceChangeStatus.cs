@@ -97,18 +97,29 @@ namespace AssignResourceChangeStatus
 
             if ( project == null ) return args.Issue;
 
+            //If the status is NOT the default for the project/type AND default statusId has been selected then exit
+            ProjectManager pm = GeminiApp.GetManager<ProjectManager>( args.User ); ;
+            var projectDefaults = pm.GetDefaults( args.Issue.Project, args.Issue.Entity.TypeId );
+            
+            //          Current status is not the default statusId           and   there was a default status set
+            if( args.Issue.Entity.StatusId != projectDefaults.Values.StatusId && projectDefaults.Values.StatusId  > 0 )
+            {
+                return args.Issue;
+            }
+
             var metaManager = GeminiApp.GetManager<MetaManager>( args.User );
 
             var issueType = metaManager.TypeGet( args.Issue.Entity.TypeId ) ; // args.Context.Meta.TypeGet( args.Issue.Entity.TypeId );
             var issueStatus = metaManager.StatusGet( args.Issue.Entity.StatusId ); // args.Context.Meta.StatusGet( args.Issue.Entity.StatusId );
 
             var workflow = metaManager.StatusGetWorkflow( issueType.Entity, issueStatus.Entity, args.Issue.Entity );
-
+            
             if ( workflow == null || workflow.Count() <= 1 )
             {
                 return args.Issue;
             }
 
+            // if the status is the first in the workflow (and default from above) then move along one
             if ( args.Issue.Entity.StatusId == workflow[0].Entity.Id )
             {
                 args.Issue.Entity.StatusId = workflow[1].Entity.Id;
