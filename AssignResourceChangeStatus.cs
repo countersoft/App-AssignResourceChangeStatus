@@ -93,17 +93,26 @@ namespace AssignResourceChangeStatus
             //If there is no resource, then do not want to do anything
             if ( args.Issue.Entity.GetResources().Count == 0 ) return args.Issue;
 
+            //if there are already resources assigned, then do not want to do anything
+            if ( args.Previous != null && args.Previous.Entity != null && args.Previous.Entity.GetResources().Count > 0 ) return args.Issue;
+
             var project = args.Context.Projects.Get( args.Issue.Entity.ProjectId );
 
             if ( project == null ) return args.Issue;
 
             //If the status is NOT the default for the project/type AND default statusId has been selected then exit
-            ProjectManager pm = GeminiApp.GetManager<ProjectManager>( args.User ); ;
-            var projectDefaults = pm.GetDefaults( args.Issue.Project, args.Issue.Entity.TypeId );
-            
-            //          Current status is not the default statusId           and   there was a default status set
-            if( args.Issue.Entity.StatusId != projectDefaults.Values.StatusId && projectDefaults.Values.StatusId  > 0 )
+            ProjectManager projectManager = GeminiApp.GetManager<ProjectManager>( args.User );
+            var projectDefaults = projectManager.GetDefaults( args.Issue.Project, args.Issue.Entity.TypeId );
+
+            if (projectDefaults == null)
             {
+                return args.Issue;
+            }
+
+            //          Current status is not the default statusId           
+            if( args.Issue.Entity.StatusId != projectDefaults.Values.StatusId )
+            {
+                //nb If no defaults are saved
                 return args.Issue;
             }
 
