@@ -1,10 +1,8 @@
-﻿using Countersoft.Gemini;
-using Countersoft.Gemini.Commons.Dto;
+﻿using Countersoft.Gemini.Commons.Dto;
 using Countersoft.Gemini.Commons.Entity;
 using Countersoft.Gemini.Commons.Meta;
 using Countersoft.Gemini.Extensibility.Apps;
 using Countersoft.Gemini.Extensibility.Events;
-using Countersoft.Gemini.Infrastructure.Managers;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -21,11 +19,45 @@ namespace AssignResourceChangeStatus
     {
         public Issue BeforeCreate(IssueEventArgs args)
         {
+            if ( args.Entity.GetResources().Count == 0 ) return args.Entity;
+
+            var project = args.Context.Projects.Get( args.Entity.ProjectId );
+
+            if ( project == null ) return args.Entity;
+
+            List<IssueStatus> statuses = args.Context.Meta.StatusGet().FindAll( s => s.TemplateId == project.TemplateId ).Where( s => !s.IsFinal ).OrderBy( s => s.Sequence ).ToList();
+
+            if ( statuses.Count <= 1 ) return args.Entity;
+
+            if ( args.Entity.StatusId == statuses[0].Id )
+            {
+                args.Entity.StatusId = statuses[1].Id;
+
+                return args.Entity;
+            }
+
             return args.Entity;
         }
 
         public Issue BeforeUpdate(IssueEventArgs args)
         {
+            if ( args.Entity.GetResources().Count == 0 ) return args.Entity;
+
+            var project = args.Context.Projects.Get( args.Entity.ProjectId );
+
+            if ( project == null ) return args.Entity;
+
+            List<IssueStatus> statuses = args.Context.Meta.StatusGet().FindAll( s => s.TemplateId == project.TemplateId ).Where( s => !s.IsFinal ).OrderBy( s => s.Sequence ).ToList();
+
+            if ( statuses.Count <= 1 ) return args.Entity;
+
+            if ( args.Previous.GetResources().Count == 0 && args.Previous.StatusId == statuses[0].Id )
+            {
+                args.Entity.StatusId = statuses[1].Id;
+
+                return args.Entity;
+            }
+
             return args.Entity;
         }
 
@@ -80,51 +112,11 @@ namespace AssignResourceChangeStatus
 
         public IssueDto BeforeCreateFull(IssueDtoEventArgs args)
         {
-            return UpdateStatus( args );
+            return args.Issue;
         }
 
         public IssueDto BeforeUpdateFull(IssueDtoEventArgs args)
         {
-            return UpdateStatus(args);
-        }
-
-        private IssueDto UpdateStatus( IssueDtoEventArgs args )
-        {
-            //If there is no resource, then do not want to do anything
-            if ( args.Issue.Entity.GetResources().Count == 0 ) return args.Issue;
-
-            var project = args.Context.Projects.Get( args.Issue.Entity.ProjectId );
-
-            if ( project == null ) return args.Issue;
-
-            //If the status is NOT the default for the project/type AND default statusId has been selected then exit
-            ProjectManager pm = GeminiApp.GetManager<ProjectManager>( args.User ); ;
-            var projectDefaults = pm.GetDefaults( args.Issue.Project, args.Issue.Entity.TypeId );
-            
-            //          Current status is not the default statusId           and   there was a default status set
-            if( args.Issue.Entity.StatusId != projectDefaults.Values.StatusId && projectDefaults.Values.StatusId  > 0 )
-            {
-                return args.Issue;
-            }
-
-            var metaManager = GeminiApp.GetManager<MetaManager>( args.User );
-
-            var issueType = metaManager.TypeGet( args.Issue.Entity.TypeId ) ; // args.Context.Meta.TypeGet( args.Issue.Entity.TypeId );
-            var issueStatus = metaManager.StatusGet( args.Issue.Entity.StatusId ); // args.Context.Meta.StatusGet( args.Issue.Entity.StatusId );
-
-            var workflow = metaManager.StatusGetWorkflow( issueType.Entity, issueStatus.Entity, args.Issue.Entity );
-            
-            if ( workflow == null || workflow.Count() <= 1 )
-            {
-                return args.Issue;
-            }
-
-            // if the status is the first in the workflow (and default from above) then move along one
-            if ( args.Issue.Entity.StatusId == workflow[0].Entity.Id )
-            {
-                args.Issue.Entity.StatusId = workflow[1].Entity.Id;
-            }
-
             return args.Issue;
         }
     }
